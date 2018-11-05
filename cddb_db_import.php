@@ -1,5 +1,5 @@
-<?php
 #!/usr/bin/env php
+<?php
 /**
  * cddb_db_import.php, 0.1
  * 
