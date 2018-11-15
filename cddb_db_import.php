@@ -45,10 +45,10 @@ error_reporting('E_ALL');
 
 
 
-// Directory path of CDDB file(s)
-define('CDDB_BASEPATH', './freedb-update-20181001-20181101');
+// Directory path of CDDB tarball extract
+define('CDDB_BASEPATH', './freedb-update-yyyymmdd-yyyymmdd');
 
-// File path of the db
+// File path of db
 define('SQLITE_PATH', './cddb_db.sqlite');
 
 
@@ -57,28 +57,28 @@ define('SQLITE_PATH', './cddb_db.sqlite');
 
 
 
-// Skeleton for album insertion
+// Skeleton for album insert
 define('INS_ALBUM', "INSERT OR REPLACE INTO \"ALBUMS\" VALUES (%s);\n");
 
-// Skeleton for album tracks subquery (eg. trigger)
-define('INS_ALBUM_TRIGGER', "%s");
+// Skeleton for album tracks query
+define('INS_ALBUM_TRACKS', "%s");
 
-// Skeleton for album track insertion
-define('INS_ALBUM_TRACKS', "INSERT OR REPLACE INTO \"TRACKS\" VALUES (%s);\n");
+// Skeleton for album track insert
+define('INS_TRACK', "INSERT OR REPLACE INTO \"TRACKS\" VALUES (%s);\n");
 
 
-// Maxiumum length of title extended field(s)
+// Maxiumum length of title extended field
 define('EXT_TITLE_MAX_LENGTH', 256);
 
 
 // Frames per one second
 define('OFFSET_FPS', 75);
 
-// Ratio to extimate a better track duration compensating pre-gap (default: approx. 1/4)
-define('OFFSET_GAP_FPS', 1.0030);
+// Ratio to extimate better track duration
+define('OFFSET_GAP', 1.0030);
 
-// Function to round duration digits (default: intval | round, ceil, floor)
-define('DURATION_ROUND_FUNC', 'intval');
+// Function to round duration length digits (default: intval | round, ceil, floor)
+define('DURATION_ROUND', 'intval');
 
 
 
@@ -107,7 +107,7 @@ function db_disconnect() {
 }
 
 /**
- * Perform a db transaction
+ * Perform db transaction
  *
  * @param string $transation
  */
@@ -120,7 +120,7 @@ function db_transaction($transaction) {
 }
 
 /**
- * Clean and encode a text string
+ * Clean encode text string
  *
  * @param string $text
  * @return string
@@ -138,7 +138,7 @@ function enc_func($text) {
 }
 
 /**
- * Escape a string in double quotes
+ * Escape string in double quotes
  *
  * @param string $value
  * @return string
@@ -151,7 +151,7 @@ function qas_func($value) {
 }
 
 /**
- * Convert time in seconds to (hours:)minutes:seconds
+ * Convert time from seconds to (hh:)mm:ss
  *
  * @param string $seconds
  * @param string|boolean $sep ':'
@@ -223,7 +223,7 @@ while (($idir = @readdir($dir)) !== false) {
 		printf("Parsing entry: %s\n", $file);
 
 		/**
-		 * Each $_album index corresponds to entry field or 'album' mutation
+		 * Each $_album index to entry field or 'album' mutation
 		 *
 		 *	[
 		 *		ID	<=>	DISCID (file, singular)
@@ -247,7 +247,7 @@ while (($idir = @readdir($dir)) !== false) {
 
 		while (($buffer = fgets($fileh)) !== false) {
 
-			/* Skip some empty and unwanted fields */
+			/* Skip some empty unwanted fields */
 			if ($buffer[0] == '#') {
 				if (! isset($buffer[2]))
 					continue;
@@ -306,7 +306,7 @@ while (($idir = @readdir($dir)) !== false) {
 
 				$_tracks[$tti][2] .= $line[1];
 
-				/* Calculates separator occurrences */
+				/* Calculate separator occurrencies */
 				$sepocc += preg_match_all('/\s[-\/]\s/', $line[1]);
 
 				continue;
@@ -320,7 +320,7 @@ while (($idir = @readdir($dir)) !== false) {
 
 				$_tracks[$tti][3] .= $line[1];
 
-				/* Has reach the max limit, stop capturing */
+				/* Has reach max limit, stop capturing */
 				if (strlen($_tracks[$tti][3]) > EXT_TITLE_MAX_LENGTH)
 					$_track_ext_title = false;
 
@@ -328,7 +328,7 @@ while (($idir = @readdir($dir)) !== false) {
 			}
 		}
 
-		/* Splits the album title */
+		/* Split album title */
 		if (strpos($_album[3], ' / ')) {
 			$_album[3] = explode(' / ', $_album[3]);
 			
@@ -336,10 +336,10 @@ while (($idir = @readdir($dir)) !== false) {
 			$_album[3] = $_album[3][1];
 		}
 
-		/* Calculates the last offset from entry disc length */
+		/* Calculate last offset from entry disc length */
 		$_offsets[] = call_user_func_array(
-			DURATION_ROUND_FUNC,
-			array($_album_length * OFFSET_FPS * OFFSET_GAP_FPS)
+			DURATION_ROUND,
+			array($_album_length * OFFSET_FPS * OFFSET_GAP)
 		);
 
 
@@ -351,7 +351,7 @@ while (($idir = @readdir($dir)) !== false) {
 
 
 		/**
-		 * Each $_track index corresponds to entry field or 'track' mutation
+		 * Each $_track index to entry field or 'track' mutation
 		 *
 		 *	[
 		 *		ID	<=>	DISCID (file, singular)
@@ -379,7 +379,7 @@ while (($idir = @readdir($dir)) !== false) {
 				$title[1] = $title[2][0];
 				unset($title[2][0]);
 
-			/* Missing separator */
+			/* No separator */
 			} else {
 				$title[1] = $_track[2];
 			}
@@ -387,14 +387,14 @@ while (($idir = @readdir($dir)) !== false) {
 			if ($sep && $title[2]) {
 				$title[0] = array();
 
-				/* Trying to get more infos from the track title */
+				/* Trying to get infos from track title */
 				foreach ($title[2] as $t) {
 					$t = preg_split('/\s(\+|ft\.|feat\.|featuring|with|vs\.|vs)\s/i', $t);
 					$t = array_map('trim', $t);
 					$title[0] = array_merge($title[0], $t);
 				}
 
-				/* Have insufficent infos for each track, revert back the title */
+				/* Have not enough tracks info, revert back title */
 				if (count($title[0]) && $sepocc < ($tti / 3)) {
 					$title[0] = implode((' ' . $sep . ' '), $title[0]);
 					$title[1] .= ($title[1] ? ' ' . $sep . ' ' . $title[0] : $title[0]);
@@ -413,7 +413,7 @@ while (($idir = @readdir($dir)) !== false) {
 				$_track[3] = $title[0];
 
 			$_track_length = $_offsets[($i + 1)] - $_offsets[$i];
-			$_track_length /= OFFSET_GAP_FPS;
+			$_track_length /= OFFSET_GAP;
 			$_album_duration += $_track_length;
 			$_track_length /= OFFSET_FPS;
 
@@ -422,14 +422,14 @@ while (($idir = @readdir($dir)) !== false) {
 			$_track = array_map('qas_func', $_track);
 			$_track = implode(',', $_track);
 
-			$_album_tracks .= sprintf(INS_ALBUM_TRACKS, $_track);
+			$_album_tracks .= sprintf(INS_TRACK, $_track);
 		}
 
 		$_album_duration /= OFFSET_FPS;
 
 		$_album[7] = $_album_tracks_tot;
 		$_album[8] = call_user_func_array(
-			DURATION_ROUND_FUNC,
+			DURATION_ROUND,
 			array($_album_duration)
 		);
 
@@ -438,7 +438,7 @@ while (($idir = @readdir($dir)) !== false) {
 
 
 		$transaction .= sprintf(INS_ALBUM, $_album);
-		$transaction .= sprintf(INS_ALBUM_TRIGGER, $_album_tracks);
+		$transaction .= sprintf(INS_ALBUM_TRACKS, $_album_tracks);
 
 
 		if ($ix++ > 999) {
