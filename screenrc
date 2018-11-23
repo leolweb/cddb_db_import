@@ -1,0 +1,6 @@
+screen -t "asc" ./recur.sh asc
+split
+focus
+screen -t "desc" ./recur.sh desc
+focus
+focus
