@@ -55,11 +55,11 @@ once approach:
 
 parallel approach:
 
-  PS> ./import_parallel.ps1
+	PS> ./import_parallel.ps1
 
 once approach:
 
-  PS> ./import_once.ps1
+	PS> ./import_once.ps1
 
 
 
