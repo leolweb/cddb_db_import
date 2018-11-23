@@ -5,36 +5,15 @@
  * 
  * Script to import CDDB entries in sqlite db.
  * 
- * 
- * Portion of "extravex" codebase.
- * 
  * @version 0.1
  * @copyright Copyright (c) 2018 Leonardo Laureti
  * @license MIT License
  * 
  * 
+ * usage:
  * 
+ * 	~$ php cddb_db_import.php
  * 
- * 
- * Import sql schema to create a new sqlite db:
- * 
- * ~$ sqlite3
- * 
- * 		> .open cddb_db.sqlite
- * 		> .read cddb_db_schema.sql  
- * 		> .quit
- * 
- * 
- * Run the script:
- * 
- * ~$ php cddb_db_import.php
- * 
- * 
- * Some utilization examples:
- * 
- * 	SELECT * FROM "TRACKS" LEFT JOIN "ALBUMS" ON TRACKS.ID=ALBUMS.ID WHERE DT1 LIKE "%bob%" LIMIT 100;
- * 	SELECT * FROM "TRACKS" WHERE TT0 LIKE "%dog%" LIMIT 100;
- * 	SELECT * FROM "ALBUMS" WHERE DT1 LIKE "%puppy%" LIMIT 100;
  */
 
 error_reporting('E_ALL');
@@ -46,7 +25,7 @@ error_reporting('E_ALL');
 
 
 // Directory path of CDDB tarball extract
-define('CDDB_BASEPATH', './freedb-update-yyyymmdd-yyyymmdd');
+define('CDDB_BASEPATH', './db-src-yyyymmdd-yyyymmdd');
 
 // File path of db
 define('SQLITE_PATH', './cddb_db.sqlite');
@@ -79,6 +58,10 @@ define('OFFSET_GAP', 1.0030);
 
 // Function to round duration length digits (default: intval | round, ceil, floor)
 define('DURATION_ROUND', 'intval');
+
+
+
+
 
 
 
@@ -126,12 +109,19 @@ function db_transaction($transaction) {
  * @return string
  */
 function enc_func($text) {
-	$text = str_replace(array('\n', "\n", '\r', "\r", '\t', "\t"), ' ', $text);
-	$value = htmlentities($text, ENT_QUOTES, 'UTF-8');
+	$text = str_replace(
+		array('\n', "\n", '\r', "\r", '\t', "\t"),
+		array(' ', '', ' ', '', ' ', ' '),
+		$text
+	);
+
+	$value = htmlspecialchars($text);
+
 	if (! $value) {
 		$value = utf8_encode($text);
-		$value = htmlentities($value, ENT_QUOTES, 'UTF-8');
+		$value = htmlspecialchars($value);
 	}
+
 	$value = preg_replace('/[\s]{2}+/', ' ', $value);
 
 	return trim($value);
@@ -193,34 +183,39 @@ printf("CDDB: %s\n\n", $cddb_db_path);
 $dir = @opendir($cddb_db_path);
 
 
-while (($idir = @readdir($dir)) !== false) {
-	if (strpos($idir, '.') === 0)
+while (($cdir = @readdir($dir)) !== false) {
+
+	if (strpos($cdir, '.') === 0)
 		continue;
 
 
-	$indir = @opendir($cddb_db_path . '/' . $idir);
+	$idir = $cddb_db_path . '/' . $cdir;
+
+	if (! is_dir($idir))
+		continue;
+
+
+	$indir = @opendir($idir);
 
 	$ix = 0;
 
-	printf("\nEntering category: %s\n\n", $idir);
+	printf("\nEntering category: %s\n\n", $cdir);
 
 	$transaction = '';
 
 
-	$dirs = @stat($cddb_db_path . '/' . $idir);
-	$in = $dirs[3] - 1;
-
-
 	while (($file = @readdir($indir)) !== false) {
-		if (! is_file($cddb_db_path . '/' . $idir . '/' . $file))
+
+		if (! is_file($cddb_db_path . '/' . $cdir . '/' . $file))
 			continue;
 
-		$fileh = @fopen($cddb_db_path . '/' . $idir . '/' . $file, 'r');
+		$fileh = @fopen($cddb_db_path . '/' . $cdir . '/' . $file, 'r');
 
 		$id = $file;
 		$sepocc = 0;
 
 		printf("Parsing entry: %s\n", $file);
+
 
 		/**
 		 * Each $_album index to entry field or 'album' mutation
@@ -238,7 +233,7 @@ while (($idir = @readdir($dir)) !== false) {
 		 *		DR	<=>	entry revision
 		 *	]
 		 */
-		$_album = array('', '', '', '', '', '', '', '', '');
+		$_album = array('', '', '', '', '', '', '', '', '', '');
 		$_tracks = array();
 		$_offsets = array();
 
@@ -246,6 +241,8 @@ while (($idir = @readdir($dir)) !== false) {
 		$_track_ext_title = true;
 
 		while (($buffer = fgets($fileh)) !== false) {
+
+			if (! $buffer) continue;
 
 			/* Skip some empty unwanted fields */
 			if ($buffer[0] == '#') {
@@ -270,16 +267,11 @@ while (($idir = @readdir($dir)) !== false) {
 			if ($line[0] == 'PLAYORDER')
 				break;
 
-			$line[1] = call_user_func_array(
-				'enc_func',
-				array($line[1])
-			);
-
 			if ($buffer[0] == 'D') {
 				if ($line[0] == 'DISCID') {
 					$_album[0] = $id;
-					$_album[1] = $line[1];
-					$_album[2] = $idir;
+					$_album[1] .= $line[1];
+					$_album[2] = $cdir;
 				}
 
 				if ($line[0] == 'DTITLE') {
@@ -349,7 +341,6 @@ while (($idir = @readdir($dir)) !== false) {
 		$_album_duration = 0;
 
 
-
 		/**
 		 * Each $_track index to entry field or 'track' mutation
 		 *
@@ -400,7 +391,7 @@ while (($idir = @readdir($dir)) !== false) {
 					$title[1] .= ($title[1] ? ' ' . $sep . ' ' . $title[0] : $title[0]);
 					$title[0] = '';
 				} else {
-					$title[0] = implode(',', $title[0]);
+					$title[0] = implode(', ', $title[0]);
 				}
 			}
 
@@ -409,8 +400,12 @@ while (($idir = @readdir($dir)) !== false) {
 			if (! $_track_ext_title)
 				$_track[3] = '';
 
+			$_track[3] = enc_func($_track[3]);
+
 			if ($title[0] && ! $_track[3])
-				$_track[3] = $title[0];
+				$_track[3] = enc_func($title[0]);
+
+			$_track[2] = enc_func($_track[2]);
 
 			$_track_length = $_offsets[($i + 1)] - $_offsets[$i];
 			$_track_length /= OFFSET_GAP;
@@ -424,6 +419,11 @@ while (($idir = @readdir($dir)) !== false) {
 
 			$_album_tracks .= sprintf(INS_TRACK, $_track);
 		}
+
+		$_album[1] = enc_func($_album[1]);
+		$_album[3] = enc_func($_album[3]);
+		$_album[4] = enc_func($_album[4]);
+		$_album[6] = enc_func($_album[6]);
 
 		$_album_duration /= OFFSET_FPS;
 
@@ -445,6 +445,7 @@ while (($idir = @readdir($dir)) !== false) {
 			$ix = 0;
 
 			db_transaction($transaction);
+
 			$transaction = '';
 		}
 	}

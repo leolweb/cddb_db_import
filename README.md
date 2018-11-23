@@ -3,6 +3,13 @@
 Script to import CDDB entries in sqlite db.
 
 
+
+### Requirements
+
+- sqlite3
+- php7
+
+
 ### Import sql schema to create a new sqlite db
 
 ```console
@@ -34,14 +41,20 @@ Script to import CDDB entries in sqlite db.
   SELECT * FROM "ALBUMS" WHERE DT1 LIKE "%puppy%" LIMIT 100;
 ```
 
+ 
 
-_Utils:_
+#### Utils:
 
 - [FreeDB source code repository](http://ftp.freedb.org/pub/freedb/)
 - [libcddb source code repository](http://libcddb.sourceforge.net/)
 - [cdrip source code sample](http://www.leapsecond.com/tools/cdrip.c)
 - [EasyTAG source code sample](https://github.com/GNOME/easytag/blob/master/src/cddb_dialog.c)
 
+ 
+
+_Portion of "extravex" codebase._
+
+ 
 
 ## License
 
