@@ -11,4 +11,4 @@
  */
 
 
-file_exists('./README.md') && print(file_get_contents('./README.md'));
+file_exists('README.md') && print(file_get_contents('README.md'));

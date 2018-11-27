@@ -17,11 +17,11 @@ Workflow Script-workflow {
     Parallel {
         InlineScript {
             Set-Location $Using:current_path
-            php -f "$Using:current_path/cddb_db_import_parallel.php" $Using:category asc
+            php -f "cddb_db_import_parallel.php" $Using:category asc
         }
         InlineScript {
             Set-Location $Using:current_path
-            php -f "$Using:current_path/cddb_db_import_parallel.php" $Using:category desc
+            php -f "cddb_db_import_parallel.php" $Using:category desc
         }
     }
 }
