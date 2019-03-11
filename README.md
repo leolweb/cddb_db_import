@@ -103,10 +103,6 @@ once approach:
 
  
 
-_Portion of "extravex" codebase._
-
- 
-
 ## License
 
 [MIT](LICENSE)
